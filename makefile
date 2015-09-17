@@ -1,12 +1,16 @@
 CC = g++ -I .  
-CFLAGS = -O3 -std=c++0x
+CFLAGS = -O3 -std=c++0x -fstack-check -DOBJRDF_VERB
 %.o:%.cpp %.h
 	$(CC) -c $(CFLAGS) $< -o $@
-xml_parser.test:xml_parser.test.cpp parser.h char_iterator.h xml_parser.h
+%.test:%.test.cpp %.h parser.h char_iterator.h
 	$(CC) $(CFLAGS) $< -o $@ 
+sparql_parser.test:sparql_parser.test.cpp sparql_parser.h parser.h char_iterator.h
+	$(CC) $(CFLAGS) $< -lobjrdf -o $@ 
 install:parser.h char_iterator.h
 	mkdir -p /usr/local/include/parser
-	cp parser.h char_iterator.h xml_parser.h /usr/local/include/parser/
+	cp ifthenelse.hpp parser.h char_iterator.h xml_parser.h /usr/local/include/parser/
 arm_install:parser.h char_iterator.h
 	mkdir -p /opt/ioplex_mx/usr/arm-buildroot-linux-gnueabihf/sysroot/usr/include/parser
-	cp parser.h char_iterator.h xml_parser.h /opt/ioplex_mx/usr/arm-buildroot-linux-gnueabihf/sysroot/usr/include/parser/
+	cp ifthenelse.hpp parser.h char_iterator.h xml_parser.h /opt/ioplex_mx/usr/arm-buildroot-linux-gnueabihf/sysroot/usr/include/parser/
+readme.pdf:readme.md
+	pandoc -V geometry:margin=1in -o $@ $<

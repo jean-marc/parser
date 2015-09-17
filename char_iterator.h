@@ -20,7 +20,7 @@ namespace parser{
 			int current=-1,end=-1;//how many chars read so far, we can get that from istream gcount???
 			//could we use underlying streambuf??? using seekg? no because
 			//we don't control when buffer gets loaded, 
-			enum {N=0x100};
+			enum {N=0x1000};
 			enum {MASK=N-1};
 			char buffer[N];
 			source(std::istream& in):in(in){}
@@ -32,7 +32,7 @@ namespace parser{
 					auto tmp=in.get();
 					//buffer[current&MASK]=in.get();
 					buffer[current&MASK]=tmp;
-					std::cerr<<tmp<<"\t`"<<(char)tmp<<"'\t"<<(tmp==std::istream::traits_type::eof())<<"\teof:"<<in.eof()<<std::endl;
+					//std::cerr<<index<<"\t"<<tmp<<"\t`"<<(char)tmp<<"'\t"<<(tmp==std::istream::traits_type::eof())<<"\teof:"<<in.eof()<<std::endl;
 					if(in.eof()) end=current;
 				}
 				return buffer[index&MASK];
@@ -46,22 +46,22 @@ namespace parser{
 		char_iterator(std::istream& in):src(new source(in)),v(src->get(0)){}
 		char_iterator& operator++(){
 			++index;
-			v=src->get(index);
+			//v=src->get(index);
 			return *this;
 		}
 		char_iterator& operator+=(size_t i){
 			index+=i;
-			v=src->get(index);
+			//v=src->get(index);
 			return *this;
 		}
 		char_iterator& operator--(){
 			--index;
-			v=src->get(index);
+			//v=src->get(index);
 			return *this;
 		}
 		char_iterator& operator-=(size_t i){
 			index-=i;
-			v=src->get(index);
+			//v=src->get(index);
 			return *this;
 		}
 		bool operator==(const char_iterator& c)const{
@@ -72,8 +72,8 @@ namespace parser{
 		}
 		//operator size_t(){return index;} is this of any use???
 		value_type operator*(){
-			//return src->get(index);
-			return v;
+			return src->get(index);
+			//return v;
 		}
 	};
 	char_iterator operator+(const char_iterator& c,size_t i){

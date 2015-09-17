@@ -2,30 +2,56 @@
 #define XML_PARSER_H
 #include "parser.h"
 namespace parser{
+	/*
+ 	* from:
+ 	* 	http://www.w3.org/TR/REC-xml/
+	*	http://www.w3.org/TR/xml-names/
+	*/
 	struct xml_parser{
-		typedef _pl<_or<_rc<'a','z'>,_rc<'A','Z'>,_rc<'0','9'>,_c<'_'>,_c<'-'>>> nname;
-		typedef _or<_c<' '>,_c<'\n'>,_c<'\r'>,_c<'\t'>> space;
-		typedef nname element_name;
-		typedef nname attribute_name;
-		typedef _sq<_c<'\''>,_kl<_nt<_c<'\''>>>,_c<'\''>> att_single_quote;
-		typedef _sq<_c<'\"'>,_kl<_nt<_c<'\"'>>>,_c<'\"'>> att_double_quote;
-		typedef _sq<attribute_name,_c<'='>,_or<att_single_quote,att_double_quote>> attribute;
-		typedef _kl<_sq<_pl<space>,attribute>> attributes;//white space
-		typedef _sq<_c<'<'>,element_name,attributes> start_tag;
-		typedef _sq<_c<'<'>,_c<'/'>,element_name,_c<'>'>> end_tag;
-		typedef _sq<_c<'/'>,_c<'>'>> empty_end_tag;
-		typedef event<_pl<_nt<_c<'<'>>>> text;
-		typedef _sqc<'<','!','-','-'> start_comment;
-		typedef _sqc<'-','-','>'> stop_comment;
-		typedef _sq<start_comment,_kl<_nt<stop_comment>>,stop_comment> comment;
-		struct element:_sq<
-				start_tag,_or<
-					_sq<_c<'>'>,_kl<_or<element,comment,text>>,end_tag>, //<abc ...>...</abc>
-					_sq<_c<'/'>,_c<'>'>>
-				>
-			>{};
-
-
+		typedef _pl<WS> S;
+		typedef _sq<_sqc<'1','.'>,_rc<'0','9'>> VersionNum;
+		typedef _c<'='> Eq;
+		typedef _sq<S,_sqc<'v','e','r','s','i','o','n'>,Eq,_or<_sq<_c<'\''>,VersionNum,_c<'\''>>,_sq<_c<'\"'>,VersionNum,_c<'\"'>>>> VersionInfo;
+		typedef NOT_IMPLEMENTED EncodingDecl;
+		typedef NOT_IMPLEMENTED SDDecl; 
+		typedef _sq<_sqc<'<','?','x','m','l'>,VersionInfo,_op<EncodingDecl>,_op<SDDecl>,_op<S>,_sqc<'?','>'>> XMLDecl;
+		typedef NOT_IMPLEMENTED PI;
+		typedef _sq<_sqc<'<','!','-','-'>,_sqc<'-','-','>'>> Comment;
+		typedef _or<Comment,PI,S> Misc;
+		typedef NOT_IMPLEMENTED doctypedecl;
+		typedef _sq<_op<XMLDecl>,_kl<Misc>,_op<_sq<doctypedecl,_kl<Misc>>>> prolog;
+		typedef _or</*_c<':'>,*/_rc<'A','Z'>,_c<'_'>,_rc<'a','z'>> NameStartChar;//could reorder
+		typedef _or<NameStartChar,_c<'-'>,_c<'.'>,_rc<'0','9'>> NameChar;
+		typedef _sq<NameStartChar,_kl<NameChar>> Name;
+		typedef Name NCName; /* an XML Name minus `:' */
+		typedef _or<
+			_sq<_c<'\"'>,_kl<_nt<_or<_c<'<'>/*,_c<'&'>*/,_c<'\"'>>>>,_c<'\"'>>,
+			_sq<_c<'\''>,_kl<_nt<_or<_c<'<'>/*,_c<'&'>*/,_c<'\''>>>>,_c<'\''>>
+		> AttValue;
+		typedef _sq<_sqc<'x','m','l','n','s'>,_c<':'>,NCName> PrefixedAttName;
+		typedef _sqc<'x','m','l','n','s'> DefaultAttName;
+		typedef _or<PrefixedAttName,DefaultAttName> NSAttName;
+		struct Prefix:NCName{};
+		struct LocalPart:NCName{};
+		typedef LocalPart UnprefixedName;
+		typedef _sq<Prefix,_c<':'>,LocalPart> PrefixedName;
+		typedef _or<PrefixedName,UnprefixedName> QName;
+		typedef _or<_sq<NSAttName,Eq,AttValue>,_sq</*Name*/QName,Eq,AttValue>> Attribute;
+		typedef _sq<_c<'<'>,/*Name*/QName,_kl<_sq<S,Attribute>>,_op<S>,_sqc<'/','>'>> EmptyElemTag;
+		typedef _sq<_c<'<'>,/*Name*/QName,_kl<_sq<S,Attribute>>,_op<S>,_c<'>'>> STag;
+		typedef _sq<_sqc<'<','/'>,/*Name*/QName,_op<S>,_c<'>'>> ETag;
+		typedef NOT_IMPLEMENTED Reference;
+		typedef NOT_IMPLEMENTED CDSect;
+		typedef _kl<_nt<_or<_c<'<'>,_c<'&'>>>> CharData;
+		template<typename ELEMENT> struct content:_sq<_op<CharData>,_kl<_sq<_or<ELEMENT,Reference,CDSect,PI,Comment>,_op<CharData>>>>{};
+		//not very efficient,because re-parses start tag when non empty element 
+		struct element:_or<EmptyElemTag,_sq<STag,content<element>,ETag>>{};
+		//what about:
+		struct element:_sq<_c<'<'>,QName,_kl<_sq<S,Attribute>>,_op<S>,_or<
+				_sqc<'/','>'>,//empty element
+				_sq<_c<'>'>,content<element>,ETag>>
+		>{};
+		typedef _sq<prolog,element,_kl<Misc>> document;
 	};	
 }
 #endif

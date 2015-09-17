@@ -7,7 +7,8 @@
 #include "ifthenelse.hpp"
 namespace parser{
 	//need to define context
-	template<typename ITERATOR,typename _CB=std::tuple<>> struct handler{
+	template<typename _ITERATOR_,typename _CB=std::tuple<>> struct handler{
+		typedef _ITERATOR_ ITERATOR;
 		typedef handler SELF;
 		typedef _CB CB;
 		ITERATOR begin,end;//maybe could put that outside
@@ -35,12 +36,6 @@ namespace parser{
 		/*
  		*	how can we invoke callbacks without side-effect?, we could create a recursive structure that matches the grammar
  		*/ 
-		/*
-		template<typename HANDLER> void _go(ITERATOR begin,ITERATOR end){
-			HANDLER h;
-			auto tmp=T::go(begin,end,h);//h is a reference
-		}
-		*/
 		template<typename HANDLER> static std::pair<bool,HANDLER> go(HANDLER h){
 			//callback could make better use of stack, it could set its own callback
 			//it might also be interesting to know when we start and stop
@@ -48,6 +43,12 @@ namespace parser{
 			auto tmp=T::go(h);	
 			h.instance->stop(T(),h.begin,tmp.second.begin,tmp.first);
 			//if(tmp.first) h.instance->process(T(),h.begin,tmp.second.begin);
+			return tmp;
+		}
+		template<typename ITERATOR,typename HANDLER> static std::pair<bool,ITERATOR> go(ITERATOR begin,ITERATOR end,HANDLER& h){
+			h.start(T());
+			auto tmp=T::go(begin,end,h);
+			h.stop(T(),begin,tmp.second,tmp.first);
 			return tmp;
 		}
 		template<typename ITERATOR,typename CB=nil> static std::pair<bool,ITERATOR> go(ITERATOR begin,ITERATOR end){
@@ -72,6 +73,9 @@ namespace parser{
 		template<typename HANDLER> static std::pair<bool,HANDLER> go(HANDLER h){
 			return {true,h};
 		}
+		template<typename ITERATOR,typename HANDLER> static std::pair<bool,ITERATOR> go(ITERATOR begin,ITERATOR end,HANDLER& h){
+			return {true,begin};
+		}
 		template<typename ITERATOR,typename CB=nil> static std::pair<bool,ITERATOR>	go(ITERATOR begin,ITERATOR end){
 			return {true,begin};
 		}
@@ -80,12 +84,21 @@ namespace parser{
 		template<typename HANDLER> static std::pair<bool,HANDLER> go(HANDLER h){
 			return {false,h};
 		}
+		template<typename ITERATOR,typename HANDLER> static std::pair<bool,ITERATOR> go(ITERATOR begin,ITERATOR end,HANDLER& h){
+			return {false,begin};
+		}
+		template<typename ITERATOR,typename CB=nil> static std::pair<bool,ITERATOR> go(ITERATOR begin,ITERATOR end){
+			return {false,begin};
+		}
 	};
 	struct _any{//also called epsilon parser
 		template<typename HANDLER> static std::pair<bool,HANDLER> go(HANDLER h){
 			if(h.begin==h.end) return {false,h};
 			++h.begin;return {true,h};
-			//return {true,{++h.begin,h.end}};//new handler
+		}
+		template<typename ITERATOR,typename HANDLER> static std::pair<bool,ITERATOR> go(ITERATOR begin,ITERATOR end,HANDLER& h){
+			if(begin==end) return {false,begin};
+			return {true,++begin};
 		}
 		template<typename ITERATOR,typename CB=nil> static std::pair<bool,ITERATOR>	go(ITERATOR begin,ITERATOR end){
 			if(begin==end) return {false,begin};
@@ -95,9 +108,12 @@ namespace parser{
 	template<char C> struct _c{
 		template<typename HANDLER> static std::pair<bool,HANDLER> go(HANDLER h){
 			if(h.begin==h.end) return {false,h};
-			//if(*h.begin==C) return {true,{++h.begin,h.end}};
-			if(*h.begin==C){++h.begin;return {true,h};}
+			if(*h.begin==C){++h.begin;return {true,h};}//this causes a problem if no character available yet, could we actually increment only when dereferencing?
 			return {false,h};
+		}
+		template<typename ITERATOR,typename HANDLER> static std::pair<bool,ITERATOR> go(ITERATOR begin,ITERATOR end,HANDLER& h){
+			if(begin==end) return {false,begin};
+			return *begin==C ? std::pair<bool,ITERATOR>(true,++begin) : std::pair<bool,ITERATOR>(false,begin);
 		}
 		template<typename ITERATOR,typename CB=nil> static std::pair<bool,ITERATOR>	go(ITERATOR begin,ITERATOR end){
 			if(begin==end) return {false,begin};
@@ -107,20 +123,28 @@ namespace parser{
 	template<char A,char B> struct _rc{
 		template<typename HANDLER> static std::pair<bool,HANDLER> go(HANDLER h){
 			if(h.begin==h.end) return {false,h};
-			//if((A<=*h.begin)&&(*h.begin<=B)) return {true,{++h.begin,h.end}};
 			if((A<=*h.begin)&&(*h.begin<=B)){++h.begin;return {true,h};}
 			return {false,h};
 		}
+		template<typename ITERATOR,typename HANDLER> static std::pair<bool,ITERATOR> go(ITERATOR begin,ITERATOR end,HANDLER& h){
+			if(begin==end) return {false,begin};
+			if((A<=*begin)&&(*begin<=B)) return {true,++begin};
+			return {false,begin};
+		}
 		template<typename ITERATOR,typename CB=nil> static std::pair<bool,ITERATOR>	go(ITERATOR begin,ITERATOR end){
 			if(begin==end) return {false,begin};
-			bool tmp=(A<=*begin)&&(*begin<=B);
-			return {tmp,tmp ? ++begin : begin};
+			if((A<=*begin)&&(*begin<=B)) return {true,++begin};
+			return {false,begin};
 		}
 	};
 	template<typename FIRST,typename... NEXT> struct _sq{
 		template<typename HANDLER> static std::pair<bool,HANDLER> go(HANDLER h){
 			auto tmp=_cb<FIRST,typename HANDLER::CB>::type::go(h);
 			return tmp.first ? _cb<_sq<NEXT...>,typename HANDLER::CB>::type::go(tmp.second) : std::pair<bool,HANDLER>(false,h);
+		}
+		template<typename ITERATOR,typename HANDLER> static std::pair<bool,ITERATOR> go(ITERATOR begin,ITERATOR end,HANDLER& h){
+			auto tmp=_cb<FIRST,typename HANDLER::CB>::type::go(begin,end,h);
+			return tmp.first ? _cb<_sq<NEXT...>,typename HANDLER::CB>::type::go(tmp.second,end,h) : std::pair<bool,ITERATOR>(false,begin);
 		}
 		template<typename ITERATOR,typename CB=nil> static std::pair<bool,ITERATOR> go(ITERATOR begin,ITERATOR end){
 			auto tmp=_cb<FIRST,CB>::type::template go<ITERATOR,CB>(begin,end);
@@ -144,6 +168,13 @@ namespace parser{
 			}
 			return {true,h};
 		}
+		template<typename ITERATOR,typename HANDLER> static std::pair<bool,ITERATOR> go(ITERATOR begin,ITERATOR end,HANDLER& h){
+			static const std::vector<char> v={C...};	
+			for(auto i=v.cbegin();i<v.cend();++i,++begin){
+				if((begin==end)||(*i!=*begin)) return {false,begin};
+			}
+			return {true,begin};
+		}
 		template<typename ITERATOR,typename CB=nil> static std::pair<bool,ITERATOR> go(ITERATOR begin,ITERATOR end){
 			static const std::vector<char> v={C...};	
 			for(auto i=v.cbegin();i<v.cend();++i,++begin){
@@ -158,12 +189,17 @@ namespace parser{
 			auto tmp=_cb<FIRST,typename HANDLER::CB>::type::go(h);
 			return tmp.first ? tmp : _cb<_or<NEXT...>,typename HANDLER::CB>::type::go(h);
 		}
+		template<typename ITERATOR,typename HANDLER> static std::pair<bool,ITERATOR> go(ITERATOR begin,ITERATOR end,HANDLER& h){
+			auto tmp=_cb<FIRST,typename HANDLER::CB>::type::go(begin,end,h);
+			return tmp.first ? tmp : _cb<_or<NEXT...>,typename HANDLER::CB>::type::go(begin,end,h);
+		}
 		template<typename ITERATOR,typename CB=nil> static std::pair<bool,ITERATOR> go(ITERATOR begin,ITERATOR end){
-			//auto tmp=FIRST::go(begin,end);
 			auto tmp=_cb<FIRST,CB>::type::template go<ITERATOR,CB>(begin,end);
 			return tmp.first ? tmp : _cb<_or<NEXT...>,CB>::type::template go<ITERATOR,CB>(begin,end);
 		}
 	};
+	//optional `?'
+	template<typename T> struct _op:_or<T,_t>{};	
 	template<typename... NEXT> struct _or<_t,NEXT...>;//compile error
 	//to be tested
 	//template<typename... NEXT> struct _or<_f,NEXT...>:_or<NEXT...>{};
@@ -182,15 +218,19 @@ namespace parser{
 			if(h.begin==h.end) return {false,h};
 			auto tmp=_cb<T,typename HANDLER::CB>::type::go(h);
 			if(tmp.first) return {false,h};
-			++h.begin;
-			return {true,h};
-			//return {true,{++h.begin,h.end}};
+			++h.begin;return {true,h};
+		}
+		template<typename ITERATOR,typename HANDLER> static std::pair<bool,ITERATOR> go(ITERATOR begin,ITERATOR end,HANDLER& h){
+			if(begin==end) return {false,begin};
+			auto tmp=_cb<T,typename HANDLER::CB>::type::go(begin,end,h);
+			if(tmp.first) return {false,begin};
+			return {true,++begin};
 		}
 		template<typename ITERATOR,typename CB=nil> static std::pair<bool,ITERATOR> go(ITERATOR begin,ITERATOR end){
 			if(begin==end) return {false,begin};
-			//auto tmp=T::go(begin,end);
 			auto tmp=_cb<T,CB>::type::template go<ITERATOR,CB>(begin,end);
-			return tmp.first ? std::pair<bool,ITERATOR>(false,begin) : std::pair<bool,ITERATOR>(true,/*tmp.second*/++begin);//more work...
+			if(tmp.first) return {false,begin};
+			return {true,++begin};
 		}
 	};
 	//recursive parsers, creates recursive callbacks! better derive class
@@ -198,6 +238,10 @@ namespace parser{
 	//uname -a and uname -s
 	template<typename T> struct _kl:_or<_sq<T,_kl<T>>,_t>{};//kleene star
 	template<typename T> struct _pl:_sq<T,_or<_pl<T>,_t>>{}; /* a+ b=a(b|true) */
+	/*
+ 	*	sometime it is necessary to limit the number of matches (to stay within buffer size)
+ 	*	the limit could be on the number of characters or occurences
+ 	*/ 
 	template<typename T> struct _nr_kl{
 		template<typename HANDLER> static std::pair<bool,HANDLER> go(HANDLER h){
 			auto _h=h;
@@ -213,6 +257,16 @@ namespace parser{
 			auto tmp=_cb<FIRST,typename HANDLER::CB>::type::go(h);
 			return tmp.first ? _cb<_sq_ws<NEXT...>,typename HANDLER::CB>::type::go(tmp.second) : std::pair<bool,HANDLER>(false,h);
 		}
+		template<typename ITERATOR,typename HANDLER> static std::pair<bool,ITERATOR> go(ITERATOR begin,ITERATOR end,HANDLER& h){
+			begin=_kl<WS>::go(begin,end,h).second;//eats whitespace
+			auto tmp=_cb<FIRST,typename HANDLER::CB>::type::go(begin,end,h);
+			return tmp.first ? _cb<_sq_ws<NEXT...>,typename HANDLER::CB>::type::go(tmp.second,end,h) : std::pair<bool,ITERATOR>(false,begin);
+		}
+		template<typename ITERATOR,typename CB=nil> static std::pair<bool,ITERATOR> go(ITERATOR begin,ITERATOR end){
+			begin=_kl<WS>::go(begin,end).second;//eats whitespace
+			auto tmp=_cb<FIRST,CB>::type::template go<ITERATOR,CB>(begin,end);
+			return tmp.first ? _cb<_sq_ws<NEXT...>,CB>::type::template go<ITERATOR,CB>(tmp.second,end) : std::pair<bool,ITERATOR>(false,begin);
+		}	
 	};
 	template<typename LAST> struct _sq_ws<LAST>:LAST{};
 	template<typename CURRENT> struct _cb<_sq_ws<CURRENT>,CURRENT>{
@@ -222,6 +276,7 @@ namespace parser{
 		typedef typename IfThenElse<in_tuple<CURRENT,std::tuple<T...>>::value,event<CURRENT>,CURRENT>::ResultT type;
 	};
 	template<typename T> struct _pl_ws:_sq_ws<T,_or<_pl_ws<T>,_t>>{}; /* a+ b=a(b|true) */
+	typedef _f NOT_IMPLEMENTED;
 }
 #endif
 

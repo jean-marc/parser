@@ -9,10 +9,9 @@
 
  *
  */
-namespace parser{
+namespace parser{//why in this namespace?
 	//from http://www.w3.org/TR/2013/REC-sparql11-query-20130321/#sparqlGrammar
 	struct sparql_parser{
-		typedef _f NOT_IMPLEMENTED;
 		typedef NOT_IMPLEMENTED BaseDecl;//not implemented yet	
 		typedef _or<_rc<'A','Z'>,_rc<'a','z'>> PN_CHARS_BASE;
 		typedef _or<PN_CHARS_BASE,_c<'_'>> PN_CHARS_U;
@@ -54,13 +53,15 @@ namespace parser{
 		typedef _or<IRIref,RDFLiteral,NumericLiteral,BooleanLiteral,BlankNode,NIL> GraphTerm;
 		typedef _or<Var,GraphTerm> VarOrTerm;
 		typedef _or<Var,IRIref> VarOrIRIref;
-		typedef _or<VarOrIRIref,_c<'a'>> Verb;
+		typedef _c<'a'> a;
+		typedef _or<VarOrIRIref,a/*_c<'a'>*/> Verb;
 		typedef /*_or<*/VarOrTerm/*,TriplesNode>*/ GraphNode;
 		typedef GraphNode Object;
 		typedef _sq_ws<Object,_kl<_sq_ws<_c<','>,Object>>> ObjectList;
 		typedef _sq_ws<Verb,ObjectList,_kl<_sq_ws<_c<';'>,Verb,ObjectList>>> PropertyListNotEmpty;
 		//literal subject: see http://www.w3.org/TR/2013/REC-sparql11-query-20130321/#sparqlTriplePatterns
-		typedef _sq_ws<VarOrTerm,PropertyListNotEmpty/*TriplesNode,PropertyList*/> TriplesSameSubject;
+		struct Subject:VarOrTerm{};//so we can attach callback
+		typedef _sq_ws<Subject/*VarOrTerm*/,PropertyListNotEmpty/*TriplesNode,PropertyList*/> TriplesSameSubject;
 		struct TriplesBlock:_sq_ws<TriplesSameSubject,_or<_sq_ws<_c<'.'>,TriplesBlock>,_t>>{};//recursive
 		template<typename T> struct GroupOrUnionGraphPattern:_sq_ws<T,_kl<_sq_ws<_sqc<'U','N','I','O','N'>,T>>>{};
 		template<typename T> struct OptionalGraphPattern:_sq_ws<_sqc<'O','P','T','I','O','N','A','L'>,T>{};
