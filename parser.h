@@ -105,7 +105,7 @@ namespace parser{
 			return {true,++begin};
 		}
 	};
-	template<char C> struct _c{
+	template<char C> struct _c{//single char
 		template<typename HANDLER> static std::pair<bool,HANDLER> go(HANDLER h){
 			if(h.begin==h.end) return {false,h};
 			if(*h.begin==C){++h.begin;return {true,h};}//this causes a problem if no character available yet, could we actually increment only when dereferencing?
@@ -120,7 +120,8 @@ namespace parser{
 			return *begin==C ? std::pair<bool,ITERATOR>(true,++begin) : std::pair<bool,ITERATOR>(false,begin);
 		}
 	};
-	template<char A,char B> struct _rc{
+	template<char A,char B> struct _rc{//character range
+		static_assert(A<B,"wrong range");		
 		template<typename HANDLER> static std::pair<bool,HANDLER> go(HANDLER h){
 			if(h.begin==h.end) return {false,h};
 			if((A<=*h.begin)&&(*h.begin<=B)){++h.begin;return {true,h};}
