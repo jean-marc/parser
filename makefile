@@ -4,10 +4,10 @@ CFLAGS = -O3 -Wall -std=c++0x -fstack-check -DOBJRDF_VERB
 	$(CC) -c $(CFLAGS) $< -o $@
 %.test:%.test.cpp %.h parser.h char_iterator.h
 	$(CC) $(CFLAGS) $< -o $@ 
-sparql_parser.test:sparql_parser.test.cpp sparql_parser.h parser.h char_iterator.h
-	$(CC) $(CFLAGS) $< -lobjrdf -o $@ 
 empty:
 
+sparql_parser.test:sparql_parser.test.cpp sparql_parser.h parser.h char_iterator.h
+	$(CC) $(CFLAGS) $< -lobjrdf -o $@ 
 #install:parser.h char_iterator.h
 	#mkdir -p /usr/local/include/parser
 	#cp ifthenelse.hpp parser.h char_iterator.h xml_parser.h url_decoder.h /usr/local/include/parser/
