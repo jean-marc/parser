@@ -6,6 +6,7 @@ namespace parser{
  	* from:
  	* 	http://www.w3.org/TR/REC-xml/
 	*	http://www.w3.org/TR/xml-names/
+	* how can we support different encoding?
 	*/
 	struct xml_parser{
 		typedef _pl<WS> S;
@@ -37,6 +38,7 @@ namespace parser{
 		typedef _sq<Prefix,_c<':'>,LocalPart> PrefixedName;
 		typedef _or<PrefixedName,UnprefixedName> QName;
 		typedef _or<_sq<NSAttName,Eq,AttValue>,_sq</*Name*/QName,Eq,AttValue>> Attribute;
+		//annoying because causes Attributes to fire 
 		typedef _sq<_c<'<'>,/*Name*/QName,_kl<_sq<S,Attribute>>,_op<S>,_sqc<'/','>'>> EmptyElemTag;
 		typedef _sq<_c<'<'>,/*Name*/QName,_kl<_sq<S,Attribute>>,_op<S>,_c<'>'>> STag;
 		typedef _sq<_sqc<'<','/'>,/*Name*/QName,_op<S>,_c<'>'>> ETag;
@@ -45,12 +47,14 @@ namespace parser{
 		typedef _kl<_nt<_or<_c<'<'>,_c<'&'>>>> CharData;
 		template<typename ELEMENT> struct content:_sq<_op<CharData>,_kl<_sq<_or<ELEMENT,Reference,CDSect,PI,Comment>,_op<CharData>>>>{};
 		//not very efficient,because re-parses start tag when non empty element 
-		struct element:_or<EmptyElemTag,_sq<STag,content<element>,ETag>>{};
+		struct element:_or<_sq<STag,content<element>,ETag>,EmptyElemTag>{};
+		/*
 		//what about:
 		struct element:_sq<_c<'<'>,QName,_kl<_sq<S,Attribute>>,_op<S>,_or<
 				_sqc<'/','>'>,//empty element
 				_sq<_c<'>'>,content<element>,ETag>>
 		>{};
+		*/
 		typedef _sq<prolog,element,_kl<Misc>> document;
 	};	
 }
