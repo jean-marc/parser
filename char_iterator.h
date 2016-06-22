@@ -70,6 +70,9 @@ namespace parser{
 		bool operator!=(const char_iterator& c)const{
 			return c.src ? index!=c.index : index!=src->end;//c is the end iterator
 		}
+		bool operator<(const char_iterator& c)const {
+			return c.src ? index < c.index : index < src->end;//c is the end iterator
+		}
 		//operator size_t(){return index;} is this of any use???
 		value_type operator*(){
 			return src->get(index);
