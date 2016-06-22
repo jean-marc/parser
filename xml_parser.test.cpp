@@ -1,3 +1,4 @@
+#include <list>
 #include "parser.h"
 #include "xml_parser.h"
 #include "char_iterator.h"
@@ -10,14 +11,14 @@ struct my_handler:handler<
 	char_iterator,
 	std::tuple<
 		xml_parser::element,
-		xml_parser::QName,
+		//xml_parser::QName,
 		xml_parser::NSAttName,
 		xml_parser::AttValue
 	>
 >{
 	struct ns{
 		string prefix;
-		string ns;
+		string _ns;
 		size_t depth;
 	};
 	list<ns> nss;
@@ -26,11 +27,11 @@ struct my_handler:handler<
  	*/ 
 	size_t depth=0;
 	pair<string,string> qname;
-	void start(xml_parser::element){
+	void start(xml_parser::element&){
 		++depth;
 		cout<<"start element"<<endl;
 	}
-	void stop(xml_parser::element,ITERATOR begin,ITERATOR end,bool v){
+	void stop(xml_parser::element&,ITERATOR begin,ITERATOR end,bool v){
 		--depth;
 		cout<<"stop element\t"<<v<<endl;
 	}
