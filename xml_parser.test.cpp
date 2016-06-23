@@ -27,11 +27,11 @@ struct my_handler:handler<
  	*/ 
 	size_t depth=0;
 	pair<string,string> qname;
-	void start(xml_parser::element&){
+	void start(xml_parser::element){
 		++depth;
 		cout<<"start element"<<endl;
 	}
-	void stop(xml_parser::element&,ITERATOR begin,ITERATOR end,bool v){
+	void stop(xml_parser::element,ITERATOR begin,ITERATOR end,bool v){
 		--depth;
 		cout<<"stop element\t"<<v<<endl;
 	}
