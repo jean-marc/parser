@@ -19,7 +19,7 @@ INSTALL_PROGRAM=$(INSTALL)
 INSTALL_DATA=$(INSTALL) -m 644
 install:
 	mkdir -p $(DESTDIR)$(includedir)/parser
-	$(INSTALL_DATA) parser.h char_iterator.h xml_parser.h url_decoder.h ifthenelse.hpp $(DESTDIR)$(includedir)/parser
+	$(INSTALL_DATA) parser.h char_iterator.h xml_parser.h url_decoder.h http_parser.h ifthenelse.hpp $(DESTDIR)$(includedir)/parser
 #more work here
-check:xml_parser.test url_decoder.test
+check:xml_parser.test url_decoder.test http_parser.test
 	echo 'it is all good!'
